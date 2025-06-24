@@ -1,0 +1,57 @@
+name: flir
+
+# Dataset paths
+data:
+  train_annotations: FLIR_ADAS_v2/images_thermal_train/coco.json
+  train_images: FLIR_ADAS_v2/images_thermal_train
+  val_annotations: FLIR_ADAS_v2/images_thermal_val/coco.json
+  val_images: FLIR_ADAS_v2/images_thermal_val
+  test_annotations: FLIR_ADAS_v2/images_thermal_test/coco.json
+  test_images: FLIR_ADAS_v2/images_thermal_test
+  names: ['person']
+
+# Image configuration
+image:
+  channels: 1  # greyscale 
+
+# Dataset specific parameters
+classes:
+  - person
+
+transform: #including more augmentations to prevent overfitting 
+  train:
+    - name: Resize
+      params:
+        size: ${model.transform.input_size}
+    - name: RandomRotation
+      params: 
+        degrees: ${optimization_results.best_params.degrees}
+        expand: false
+    - name: RandomHorizontalFlip
+      params:
+        p: ${optimization_results.best_params.p_h}
+    - name: RandomVerticalFlip
+      params:
+        p: ${optimization_results.best_params.p_v}
+    - name: Normalize
+      params:
+        mean: [0.485]
+        std: [0.229]
+  val:
+    - name: Resize
+      params:
+        size: ${model.transform.input_size}
+    - name: Normalize
+      params:
+        mean: [0.485]
+        std: [0.229]
+
+# COCO specific settings
+coco:
+  format: true
+  min_bbox_size: 8
+  max_bbox_size: 640
+  min_bbox_area: 64
+  max_bbox_area: 409600  
+
+  

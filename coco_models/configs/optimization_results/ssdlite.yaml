@@ -1,0 +1,9 @@
+name: optuna
+best_params:
+  learning_rate: 0.00122859164275488
+  weight_decay: 7.2180187329525825e-06
+  early_stopping_patience: 25
+  degrees: 15
+  p_h: 0.49237276059374435
+  p_v: 0.1088176277291226
+best_value: 8.943852938138521

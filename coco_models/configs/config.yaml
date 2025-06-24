@@ -1,0 +1,52 @@
+# hydra:
+#   sweeper:
+#     _target_: hydra_plugins.hydra_optuna_sweeper.optuna_sweeper.OptunaSweeper
+#     sampler:
+#       _target_: optuna.samplers.TPESampler
+#       seed: 123
+#     direction: minimize
+#     study_name: thermal_person_detection
+#     n_trials: 20
+#     n_jobs: 1
+#     params:
+#       model: choice(custom_detector,effnet,faster_rcnn,ssdlite)
+#       training.learning_rate: tag(log, interval(1e-5, 1e-2)) #log scale sampling 
+#       training.weight_decay: tag(log, interval(1e-6, 1e-3))
+#       training.early_stopping_patience: choice(15, 20, 25)
+#       dataset.transform.train.1.params.degrees: choice(10, 15, 20) #tuning geometric augmentation parameters from dataset config
+#       dataset.transform.train.2.params.p: interval(0.3, 0.7) #higher -- horizontal flip preserves person detection semantics 
+#       dataset.transform.train.3.params.p: interval(0.05, 0.2)
+
+hydra: #if not using optuna
+  sweeper:
+    params:
+      model: choice(custom_detector,effnet,faster_rcnn,ssdlite)
+      optimization_results: choice(custom_detector,effnet,faster_rcnn,ssdlite)
+    
+defaults:
+  - model: faster_rcnn  
+  - dataset: flir
+  - optimization_results: faster_rcnn
+  #- override hydra/sweeper: optuna #need for optuna!
+  - _self_
+
+# Experiment settings
+experiment:
+  name: run_${now:%Y-%m-%d}_${now:%H-%M-%S}
+  seed: 42
+  device: cuda
+
+# Training configuration once optuna is done 
+training:
+  batch_size: 64
+  num_epochs: 25
+  learning_rate: ${optimization_results.best_params.learning_rate}
+  weight_decay: ${optimization_results.best_params.weight_decay}
+  early_stopping_patience: ${optimization_results.best_params.early_stopping_patience}
+  checkpoint_dir: checkpoints
+  num_workers: 1
+  pin_memory: true
+
+# Logging
+logging:
+  save_dir: ${hydra:runtime.output_dir}

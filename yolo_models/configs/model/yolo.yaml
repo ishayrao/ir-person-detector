@@ -1,0 +1,70 @@
+#full yolo config file with all hyperparameters set to default
+
+name: yolo
+
+model:
+  type: yolo
+  version: v8n 
+  pretrained: true
+  num_classes: 1  
+  img_size: 640
+  batch_size: 16
+  epochs: 50
+  device: cuda
+  input_channels: 1  # Grayscale
+  output_size: 5  # 4 for bbox + 1 for class
+  backbone:
+    channels: [32, 64, 128]
+    kernel_size: 3
+    padding: 1
+  detector:
+    hidden_size: 512
+    dropout: 0.5
+
+training:
+  # Optimizer settings
+  learning_rate: 0.001
+  weight_decay: 0.0005
+  momentum: 0.937
+  optimizer: Adam  
+  # Learning rate scheduler
+  lr_scheduler: cosine  
+  warmup_epochs: 3
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+  
+  # Loss weights
+  box: 7.5  # Box loss gain
+  cls: 0.5  # Class loss gain
+  dfl: 1.5  # Distribution focal loss gain
+  pose: 12.0  # Pose loss gain
+  kobj: 1.0  # Keypoint obj loss gain
+  
+  # Regularization
+  label_smoothing: 0.0
+  nbs: 64  # Nominal batch size
+  overlap_mask: true
+  mask_ratio: 4
+  dropout: 0.0
+  
+  # Training settings
+  val: true  # Validate training results
+  plots: true  # Save plots for train/val
+  save: true  # Save best model
+  save_period: 10  # Save checkpoint every x epochs
+  cache: false  # Cache images in memory
+  image_weights: false  # Use weighted image selection for training
+  single_cls: true  # Train as single-class dataset
+  rect: false  # Rectangular training
+  cos_lr: false  # Cosine learning rate scheduler
+  close_mosaic: 10  # Disable mosaic augmentation for final 10 epochs
+  
+  # Validation settings
+  conf_thres: 0.001  # Confidence threshold
+  iou_thres: 0.6  # NMS IoU threshold
+  max_det: 300  # Maximum detections per image
+  
+  # Logging
+  verbose: true  # Print verbose output
+  seed: 0  # Global training seed
+  deterministic: true  # Deterministic training 

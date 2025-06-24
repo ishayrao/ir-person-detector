@@ -1,0 +1,22 @@
+defaults:
+  - model: yolo
+  - dataset: yolo
+  - _self_
+
+# Experiment settings
+experiment:
+  name: yolo_ir_detector
+  seed: 42
+  device: cuda
+
+# Training settings
+training:
+  num_workers: 4
+  pin_memory: true
+
+# Logging settings
+logging:
+  save_dir: outputs/${experiment.name}
+  log_interval: 10
+  save_interval: 5
+  
