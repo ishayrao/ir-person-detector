@@ -89,6 +89,7 @@ class DetectionTransform:
             
             elif t_name == 'flip_h':
                 p = params[0]
+                prob_h = torch.rand(1)
                 if torch.rand(1) < p:
                     image = F.hflip(image)
                     if target is not None and 'boxes' in target:
@@ -99,6 +100,7 @@ class DetectionTransform:
             
             elif t_name == 'flip_v':
                 p = params[0]
+                prob_v = torch.rand(1)
                 if torch.rand(1) < p:
                     image = F.vflip(image)
                     if target is not None and 'boxes' in target:
@@ -109,14 +111,15 @@ class DetectionTransform:
             
             elif t_name == 'rotate':
                 degrees= params[0]
+                prob_r = torch.rand(1)
                 if torch.rand(1) < 0.5:  # 50% chance to apply rotation
                     angle = float(torch.empty(1).uniform_(-degrees, degrees).item())
                     image, boxes = rotate_image_and_boxes(image, target['boxes'], angle, expand=False) if target is not None else (image, None)
                     if boxes is not None:
                         target['boxes'] = boxes
         
-        return image, target
-
+        return image, target, prob_h, prob_v, prob_r
+    
 def build_transforms(cfg: Dict, is_train: bool = True, test: bool = False) -> DetectionTransform:
     if is_train:
         transforms = cfg.dataset.transform.train

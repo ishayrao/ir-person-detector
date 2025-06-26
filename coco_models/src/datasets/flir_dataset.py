@@ -59,7 +59,7 @@ class FLIRDataset(Dataset):
             'image_id': torch.tensor([img_info['id']])
         }
 
-        log.info(f"image dims before transform: {image.shape}")  
+        log.info(f"image dims before transform: {image.size}")  
         for box_idx, box in enumerate(target['boxes']):
             log.info(f"box {box_idx}: {box}")
         log.info(f"image id: {target['image_id'].item()}")
@@ -67,8 +67,8 @@ class FLIRDataset(Dataset):
         # Apply transforms if any
         if self.transform:
             if isinstance(self.transform, nn.Module):  # torchvision model transforms
-                image, target = self.transform(image, target)
+                image, target, prob_h, prob_v, prob_r = self.transform(image, target)
             else:  # custom transforms
-                image, target = self.transform(image, target)
+                image, target, prob_h, prob_v, prob_r = self.transform(image, target)
         
-        return image, target 
+        return image, target, prob_h, prob_v, prob_r

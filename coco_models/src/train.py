@@ -248,15 +248,6 @@ def main(cfg: DictConfig):
         transform=train_transform
         # can add device parameter here to avoid moving to device? 
     )
-
-    for i in range(10):
-        sample = train_dataset[i]
-        image, target = sample  
-    
-        log.info(f"image dims after transform: {image.shape}")  
-        for box_idx, box in enumerate(target['boxes']):
-            log.info(f"box {box_idx}: {box}")
-        log.info(f"image id: {target['image_id'].item()}")
     
     val_dataset = FLIRDataset(
         json_file=Path(cfg.dataset.data.val_annotations),
