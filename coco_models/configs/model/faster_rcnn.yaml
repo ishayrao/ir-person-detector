@@ -8,5 +8,5 @@ num_classes: 1  # Single class for person detection
 pretrained: false
 backbone: mobilenet_v3_large_fpn
 loss:
-  cls_loss_weight: 0.5 
+  cls_loss_weight: 0.1
   box_loss_weight: ${eval:1 - model.loss.cls_loss_weight}

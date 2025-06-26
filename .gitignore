@@ -204,3 +204,4 @@ FLIR_ADAS_v2/
 /tensorboard/
 yolov8n.pt
 yolo11n.pt
+/yolo_models/

@@ -18,6 +18,7 @@ from models.ssdlite_detector import SSDLiteDetector
 from datasets.flir_dataset import FLIRDataset
 from utils.transforms import build_transforms, custom_collate_fn
 from torch.utils.tensorboard import SummaryWriter
+import gc
 
 log = logging.getLogger(__name__)
 
@@ -33,18 +34,31 @@ def train_model(model, train_loader, val_loader, optimizer, scheduler, device, c
         # Training phase
         model.train()
         train_loss = 0.0
-    
+        train_losses = {'loss_classifier': 0.0,
+                        'loss_box_reg': 0.0,
+                        'loss_objectness': 0.0,
+                        'loss_rpn_box_reg': 0.0}
+                        
         train_pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{cfg.training.num_epochs} [Train]')
         for batch_idx, (data, targets) in enumerate(train_pbar):
             # Move data to device
             data = data.to(device)
             # move target tensors to device as list of dicts 
             targets_on_device = [{k: v.to(device) for k, v in t.items()} for t in targets] #standard format for all models
-            
             optimizer.zero_grad()
+            high_loss = []
 
             if cfg.model.name in ["faster_rcnn", "ssdlite"]: #for torchvision models: they return a Dict[Tensor] which contains classification and regression losses
                 loss_dict = model(data, targets_on_device)
+                for k, v in loss_dict.items():
+                    if v.item() > 100:
+                        img_ids = [t['image_id'].item() for t in targets_on_device]
+                        high_loss.append({
+                            'batch_idx': batch_idx,
+                            'loss_type': k,
+                            'loss_value': v.item(),
+                            'image_ids': img_ids,
+                        })
                 loss = sum(loss_dict.values()) #sum of classification and regression losses
             else:
                 outputs = model(data) #standard format for custom pytorch models 
@@ -52,19 +66,30 @@ def train_model(model, train_loader, val_loader, optimizer, scheduler, device, c
                 loss = loss_dict['total_loss']
 
             loss.backward()
-            #torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0) # gradient clipping to avoid exploding gradients
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # gradient clipping to avoid exploding gradients
+            writer.add_scalar('Gradient/norm', grad_norm)
             optimizer.step()
             train_loss += loss.item() #maintain running loss total 
+
             # Log individual losses per batch to tensorboard
             for loss_name, loss_value in loss_dict.items():
+                train_losses[loss_name] += loss_value.item()
                 writer.add_scalar(f'BatchLoss/{loss_name}', loss_value.item(), 
                                 epoch * len(train_loader) + batch_idx)
 
                 # Update progress bar
-            train_pbar.set_postfix({'loss this batch': loss.item()})
+            train_pbar.set_postfix({'train loss this batch': loss.item()})
+
+        avg_losses = {k: v/len(train_loader) for k, v in train_losses.items()}
+        avg_train_loss = sum(avg_losses.values())
+        #avg_train_loss = train_loss / len(train_loader)
             
-        avg_train_loss = train_loss / len(train_loader)
-    
+        #logging high loss image ids     
+        log.info(f"high losses in epoch{epoch+1}")
+        for record in high_loss:
+            log.info(f"batch {record['batch_idx']}: {record['loss_type']} = {record['loss_value']:.4f}")
+            log.info(f"image ids: {record['image_ids']}")
+
         # Choose validation function based on model type
         if cfg.model.name in ["faster_rcnn", "ssdlite"]:
             avg_val_loss = evaluate_validation(model, val_loader, device, epoch, cfg)
@@ -124,8 +149,7 @@ def evaluate_validation(model, val_loader, device, epoch, cfg: DictConfig):
     with torch.no_grad():
         for batch_idx, (images, targets) in enumerate(val_loader):
             images = [img.to(device) for img in images]
-            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-            
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]    
             # Log validation batch info
             #log.info(f"Validation batch {batch_idx}")
             #log.info(f"Target boxes: {[t['boxes'].shape for t in targets]}")
@@ -134,8 +158,6 @@ def evaluate_validation(model, val_loader, device, epoch, cfg: DictConfig):
             
             batch_loss = sum(loss_dict.values()).item()
             val_loss += batch_loss
-        
-
     # back to train mode 
     model.train(was_training)
     
@@ -216,8 +238,8 @@ def main(cfg: DictConfig):
         train_transform = model.transforms # make these specific to each model 
         val_transform = model.transforms
    # else: #for custom and effnet 
-    train_transform = build_transforms(cfg, is_train=True)
-    val_transform = build_transforms(cfg, is_train=False)
+    train_transform = build_transforms(cfg, is_train=True, test=False)
+    val_transform = build_transforms(cfg, is_train=False, test=False)
     
     # Create datasets
     train_dataset = FLIRDataset(
@@ -254,9 +276,9 @@ def main(cfg: DictConfig):
     
     # Create optimizer
     optimizer = torch.optim.Adam(
-        model.parameters(),
+        model.parameters(),  
         lr=cfg.training.learning_rate,
-        weight_decay=cfg.training.weight_decay
+        weight_decay=cfg.training.weight_decay,
     )
 
     scheduler = ReduceLROnPlateau(optimizer, 
@@ -275,7 +297,8 @@ def main(cfg: DictConfig):
         device=device,
         cfg=cfg
     )
-    
+    gc.collect() #to avoid CUDA out of memory error on optuna
+    torch.cuda.empty_cache()
     # best validation loss for Optuna 
     return best_val_loss
 

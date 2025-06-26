@@ -8,8 +8,6 @@ import logging
 log = logging.getLogger(__name__)
 class FLIRDataset(Dataset):
     def __init__(self, json_file, thermal_dir, transform=None):
-       # log.info(f"json_file: {json_file}")
-        #log.info(f"thermal_dir: {thermal_dir}")
         self.thermal_dir = Path(thermal_dir)
         self.transform = transform
         log.info(f"thermal_dir: {self.thermal_dir}")
@@ -28,12 +26,6 @@ class FLIRDataset(Dataset):
         
         # Keep only images that have annotations
         self.images = [img for img in data['images'] if img['id'] in self.annotations]
-        log.info(f"len(self.images): {len(self.images)}") #this is correct (2231)
-
-        for img in self.images[:5]:  # just print first 5 to avoid spam
-            log.info(f"path: {self.thermal_dir / img['file_name']}")
-        self.images = [img for img in self.images if (self.thermal_dir / img['file_name']).exists()]
-        log.info(f"len(self.images): {len(self.images)}") #this is wrong! 0 left
     
     def __len__(self):
         return len(self.images)
@@ -70,7 +62,7 @@ class FLIRDataset(Dataset):
         # Apply transforms if any
         if self.transform:
             if isinstance(self.transform, nn.Module):  # torchvision model transforms
-                image = self.transform(image)
+                image, target = self.transform(image, target)
             else:  # custom transforms
                 image, target = self.transform(image, target)
         

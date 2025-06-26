@@ -25,14 +25,14 @@ transform: #including more augmentations to prevent overfitting
         size: ${model.transform.input_size}
     - name: RandomRotation
       params: 
-        degrees: ${optimization_results.best_params.degrees}
+        degrees: ${optimization_results.best_params.degrees} #10
         expand: false
     - name: RandomHorizontalFlip
       params:
-        p: ${optimization_results.best_params.p_h}
+        p: 0.5 #${optimization_results.best_params.p_h} #0.5
     - name: RandomVerticalFlip
       params:
-        p: ${optimization_results.best_params.p_v}
+        p: 0.2 #${optimization_results.best_params.p_v} #0.5
     - name: Normalize
       params:
         mean: [0.485]
@@ -41,6 +41,11 @@ transform: #including more augmentations to prevent overfitting
     - name: Resize
       params:
         size: ${model.transform.input_size}
+    - name: Normalize
+      params:
+        mean: [0.485]
+        std: [0.229]
+  test:
     - name: Normalize
       params:
         mean: [0.485]

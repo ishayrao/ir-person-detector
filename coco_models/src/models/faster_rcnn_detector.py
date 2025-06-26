@@ -12,14 +12,19 @@ class FasterRCNNDetector(nn.Module):
         
         # Load pretrained model withOUT default weights
         weights = FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT
-        self.model = fasterrcnn_mobilenet_v3_large_fpn(weights=None)
+        self.model = fasterrcnn_mobilenet_v3_large_fpn(
+            weights=None,
+            box_nms_thresh=0.5,     # NMS IoU threshold
+            box_detections_per_img=10  # Max detections per image
+        )
+        
         # Modify classifier for single class detection
         in_features = self.model.roi_heads.box_predictor.cls_score.in_features
-        self.model.roi_heads.box_predictor = torchvision.models.detection.faster_rcnn.FastRCNNPredictor(
-            in_features, cfg.model.num_classes + 1)
+        self.model.roi_heads.box_predictor = (torchvision.models.detection.faster_rcnn.FastRCNNPredictor(
+            in_features, cfg.model.num_classes + 1))
         
         self.transforms = weights.transforms()
     
     def forward(self, data, targets=None):
-
-        return self.model(data, targets)
+        outputs = self.model(data, targets)
+        return outputs

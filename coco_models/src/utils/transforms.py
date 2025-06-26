@@ -5,6 +5,10 @@ from typing import Dict, List, Union, Tuple
 import torch.nn.functional as F_nn
 import math
 
+import logging
+
+log = logging.getLogger(__name__)
+
 def custom_collate_fn(batch): #called in train.py
     """
     - images: Tensor[batch_size, C, H, W]
@@ -113,11 +117,14 @@ class DetectionTransform:
         
         return image, target
 
-def build_transforms(cfg: Dict, is_train: bool = True) -> DetectionTransform:
+def build_transforms(cfg: Dict, is_train: bool = True, test: bool = False) -> DetectionTransform:
     if is_train:
         transforms = cfg.dataset.transform.train
+    elif test:
+        transforms = cfg.dataset.transform.test
     else:
         transforms = cfg.dataset.transform.val
+    
     return DetectionTransform(transforms) 
 
 def resize_with_padding(image: torch.Tensor, target_size: Tuple[int, int]) -> Tuple[torch.Tensor, Dict[str, float]]:
@@ -160,7 +167,7 @@ def transform_boxes(boxes: torch.Tensor, scale: float, pad_left: int, pad_top: i
     transformed_boxes = boxes.clone()
     transformed_boxes[:, [0, 2]] = (transformed_boxes[:, [0, 2]] * scale + pad_left).clamp(0, max=target_w) # x1 and x2 (since already converted in flir_dataset.py)
     transformed_boxes[:, [1, 3]] = (transformed_boxes[:, [1, 3]] * scale + pad_top).clamp(0, max=target_h)   # y1 and y2
-
+    
     return transformed_boxes
 
 def rotate_image_and_boxes(image: torch.Tensor, boxes: torch.Tensor, angle: float, expand: bool) -> Tuple[torch.Tensor, torch.Tensor]:
