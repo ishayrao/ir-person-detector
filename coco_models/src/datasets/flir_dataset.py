@@ -58,6 +58,11 @@ class FLIRDataset(Dataset):
             'labels': torch.ones(boxes.shape[0], dtype=torch.int64),  # all 1s for person class
             'image_id': torch.tensor([img_info['id']])
         }
+
+        log.info(f"image dims before transform: {image.shape}")  
+        for box_idx, box in enumerate(target['boxes']):
+            log.info(f"box {box_idx}: {box}")
+        log.info(f"image id: {target['image_id'].item()}")
         
         # Apply transforms if any
         if self.transform:
